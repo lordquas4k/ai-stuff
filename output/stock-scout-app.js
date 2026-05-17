@@ -2,7 +2,7 @@
 // STOCK SCOUT v2 — app logic
 // =========================================================================
 
-// ============== MACRO TREND MERGE (runs after data.js defines DATA/SIGNA/AI_SECTOR) ==============
+// ============== MACRO TREND MERGE ==============
 function mergeMacroTrend(row) {
   const mt = MT_DATA[row.ticker];
   if (!mt) {
@@ -18,8 +18,6 @@ function mergeMacroTrend(row) {
 }
 
 DATA.forEach(mergeMacroTrend);
-SIGNA.forEach(mergeMacroTrend);
-AI_SECTOR.forEach(mergeMacroTrend);
 
 // ============== CLASSIFIER ==============
 function classify(d) {
@@ -204,12 +202,8 @@ function stars(r2) {
 }
 
 function activeDataset() {
-  if (activeTab === "watch") return [...DATA, ...SIGNA, ...AI_SECTOR]
-    .filter(d => watchlist.has(d.ticker))
-    .filter((d, i, arr) => arr.findIndex(x => x.ticker === d.ticker) === i);
-  if (activeTab === "setups") return [...DATA, ...SIGNA, ...AI_SECTOR]
-    .filter((d, i, arr) => arr.findIndex(x => x.ticker === d.ticker) === i);
-  return DATA; // main
+  if (activeTab === "watch") return DATA.filter(d => watchlist.has(d.ticker));
+  return DATA;
 }
 
 // ============== TABLE RENDER ==============
@@ -249,7 +243,7 @@ function rowHTML(d) {
     <td class="c"><button class="star-btn ${isStar ? "on" : ""}" data-star="${d.ticker}">${isStar ? "★" : "☆"}</button></td>
     <td class="l"><span class="sec-dot" style="background:${sCol}"></span><span class="tk">${d.ticker}</span></td>
     <td class="l"><span class="setup-pill s-${cls.setup.toLowerCase()}">${cls.setup}</span></td>
-    <td class="l"><span class="score-cell"><span class="score-num">${Math.round(d.score).toLocaleString()}</span><span class="bar-w"><span class="bar-f" style="width:${barW}%;background:${barC}"></span></span></span></td>
+    <td class="l"><span class="score-cell"><span class="score-num" style="color:${barC}">${Math.round(d.score).toLocaleString()}</span><span class="bar-w"><span class="bar-f" style="width:${barW}%;background:${barC}"></span></span></span></td>
     <td class="c">${mtHTML}</td>
     <td class="l"><span class="key-level ${klC}">${kl}</span></td>
     <td class="l"><span style="color:${sCol}; font-size:10px; letter-spacing:0.5px">${sect || "—"}</span></td>
@@ -394,7 +388,7 @@ function showDetail(ticker) {
     tr.classList.toggle("sel", tr.dataset.t === ticker));
 
   // search in whatever dataset contains it
-  const d = [...DATA, ...SIGNA, ...AI_SECTOR].find(x => x.ticker === ticker);
+  const d = DATA.find(x => x.ticker === ticker);
   if (!d) return;
   const cls = classify(d);
   const plan = tradePlan(d, cls);
@@ -432,9 +426,8 @@ function showDetail(ticker) {
   }).join("");
 
   // Peers in sector
-  const peers = [...DATA, ...SIGNA, ...AI_SECTOR]
+  const peers = DATA
     .filter(x => x.ticker !== ticker && secOf(x.ticker) === sect)
-    .filter((x, i, arr) => arr.findIndex(y => y.ticker === x.ticker) === i)
     .sort((a, b) => b.score - a.score)
     .slice(0, 4);
 
@@ -732,9 +725,7 @@ function buildNarrative() {
   $("kpi-mt-conflict").textContent = mtBearCount;
 
   // Header counts
-  const allTickers = [...DATA, ...SIGNA, ...AI_SECTOR]
-    .filter((d, i, arr) => arr.findIndex(x => x.ticker === d.ticker) === i);
-  const setupsCount = allTickers.filter(d => SETUPS_TAB_SETUPS.has(classify(d).setup)).length;
+  const setupsCount = DATA.filter(d => SETUPS_TAB_SETUPS.has(classify(d).setup)).length;
   $("c-setups").textContent = "·" + setupsCount;
   $("c-main").textContent   = "·" + DATA.length;
   $("c-watch").textContent  = "·" + watchlist.size;

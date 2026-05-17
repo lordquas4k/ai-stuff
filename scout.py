@@ -2,7 +2,7 @@ import pandas as pd
 from datetime import date
 from pathlib import Path
 
-from universe import TICKERS, BENCHMARK, ALL_TICKERS, SIGNA_TICKERS, AI_SECTOR_TICKERS
+from universe import TICKERS, BENCHMARK, ALL_TICKERS
 from data import fetch_prices
 from ranking import rank_universe
 from filters import minervini_filters
@@ -110,48 +110,6 @@ def print_pullback_entries(df: pd.DataFrame):
         )
 
 
-def run_signa(spy_df: pd.DataFrame):
-    """Fetch, rank and filter the Signa watchlist; save signa_YYYY-MM-DD.csv."""
-    need = [t for t in SIGNA_TICKERS if t != BENCHMARK]
-    print(f"\nFetching Signa watchlist ({len(need)} tickers)...")
-    prices = fetch_prices(need + [BENCHMARK], period="2y")
-    spy = prices.pop(BENCHMARK, spy_df)
-    signa_prices = {t: prices[t] for t in need if t in prices}
-
-    print(f"Ranking {len(signa_prices)} Signa tickers...")
-    ranked = rank_universe(signa_prices)
-
-    print("Running Minervini filters on Signa tickers...")
-    filter_results = minervini_filters(signa_prices, spy)
-
-    df = build_output(ranked, filter_results, signa_prices)
-    out_path = OUTPUT_DIR / f"signa_{date.today()}.csv"
-    df.to_csv(out_path, index=False)
-    print(f"Saved: {out_path}  ({len(df)} rows)")
-    return df
-
-
-def run_ai_sector(spy_df: pd.DataFrame):
-    """Fetch, rank and filter the AI Sector watchlist; save ai_sector_YYYY-MM-DD.csv."""
-    need = [t for t in AI_SECTOR_TICKERS if t != BENCHMARK]
-    print(f"\nFetching AI Sector watchlist ({len(need)} tickers)...")
-    prices = fetch_prices(need + [BENCHMARK], period="2y")
-    spy = prices.pop(BENCHMARK, spy_df)
-    ai_prices = {t: prices[t] for t in need if t in prices}
-
-    print(f"Ranking {len(ai_prices)} AI Sector tickers...")
-    ranked = rank_universe(ai_prices)
-
-    print("Running Minervini filters on AI Sector tickers...")
-    filter_results = minervini_filters(ai_prices, spy)
-
-    df = build_output(ranked, filter_results, ai_prices)
-    out_path = OUTPUT_DIR / f"ai_sector_{date.today()}.csv"
-    df.to_csv(out_path, index=False)
-    print(f"Saved: {out_path}  ({len(df)} rows)")
-    return df
-
-
 def main():
     OUTPUT_DIR.mkdir(exist_ok=True)
 
@@ -174,9 +132,6 @@ def main():
 
     print_top(df, TOP_N)
     print_pullback_entries(df)
-
-    run_signa(spy_df)
-    run_ai_sector(spy_df)
 
 
 if __name__ == "__main__":

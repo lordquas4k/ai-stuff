@@ -52,17 +52,11 @@ def csv_to_rows(path: Path):
 
 def main():
     scout_csvs = sorted(OUTPUT_DIR.glob("scout_*.csv"), reverse=True)
-    signa_csvs = sorted(OUTPUT_DIR.glob("signa_*.csv"), reverse=True)
-    ai_csvs    = sorted(OUTPUT_DIR.glob("ai_sector_*.csv"), reverse=True)
 
     if not scout_csvs:
         raise FileNotFoundError("No scout CSV found in output/ — run scout.py first.")
 
-    data,      mt1 = csv_to_rows(scout_csvs[0])
-    signa,     mt2 = csv_to_rows(signa_csvs[0]) if signa_csvs else ([], {})
-    ai_sector, mt3 = csv_to_rows(ai_csvs[0])    if ai_csvs    else ([], {})
-
-    mt_data    = {**mt1, **mt2, **mt3}
+    data, mt_data = csv_to_rows(scout_csvs[0])
     sector_map = load_sectors()
     scan_date  = scout_csvs[0].stem.replace("scout_", "")
 
@@ -85,17 +79,14 @@ const SECTOR_COLORS = {{
   "Materials":   "#c9a96e"
 }};
 const DATA      = {json.dumps(data)};
-const SIGNA     = {json.dumps(signa)};
-const AI_SECTOR = {json.dumps(ai_sector)};
+const SIGNA     = [];
+const AI_SECTOR = [];
 const MT_DATA   = {json.dumps(mt_data)};
 """
 
     out = OUTPUT_DIR / "stock-scout-data.js"
     out.write_text(js, encoding="utf-8")
-    print(
-        f"Wrote {out}  "
-        f"({len(data)} main + {len(signa)} signa + {len(ai_sector)} AI sector rows)"
-    )
+    print(f"Wrote {out}  ({len(data)} rows)")
 
     html = OUTPUT_DIR / "index.html"
     if html.exists():

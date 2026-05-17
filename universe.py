@@ -35,19 +35,5 @@ def load_tickers(refresh: bool = False) -> list:
         raise
 
 
-TICKERS = load_tickers()
+TICKERS     = load_tickers()
 ALL_TICKERS = TICKERS + [BENCHMARK]
-
-SIGNA_TICKERS = [
-    "BKSY", "LASR", "GLW", "BE", "SWMR", "SNDK", "LAES", "LPTH", "ABSI",
-    "IMNM", "MOB", "AVAV", "ONDS", "KTOS", "RDW", "AAPL", "RKLB", "ASTS",
-    "GEV", "MU", "EWY", "DRAM", "PL", "AVGO", "SPY", "QQQ", "GOOGL",
-    "WYFI", "AMZN", "GS", "C", "VOYG", "FLY",
-]
-
-AI_SECTOR_TICKERS = [
-    "NVDA", "AMD", "TSM", "000660.KS", "MU", "ASML", "AMAT", "LRCX", "KLAC",
-    "8035.T", "AVGO", "MRVL", "ASX", "CEG", "VST", "CCJ", "VRT", "ETN",
-    "SU.PA", "PWR", "ANET", "COHR", "MSFT", "GOOGL", "META", "AMZN", "PLTR",
-    "NOC", "LHX", "TSLA", "6861.T", "6954.T", "ROK",
-]
