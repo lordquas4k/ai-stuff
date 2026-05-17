@@ -196,6 +196,7 @@ function dol(v) {
 }
 function secColor(s) { return SECTOR_COLORS[s] || "#5b6b7d"; }
 function secOf(t) { return SECTOR_OF[t] || ""; }
+function hexAlpha(hex, alpha) { return hex + Math.round(alpha).toString(16).padStart(2, "0"); }
 function stars(r2) {
   const n = Math.max(0, Math.min(5, Math.round(r2 * 5)));
   return `<span class="star-on">${"★".repeat(n)}</span><span class="star-off">${"★".repeat(5 - n)}</span>`;
@@ -246,7 +247,7 @@ function rowHTML(d) {
     <td class="l"><span class="score-cell"><span class="score-num" style="color:${barC}">${Math.round(d.score).toLocaleString()}</span><span class="bar-w"><span class="bar-f" style="width:${barW}%;background:${barC}"></span></span></span></td>
     <td class="c">${mtHTML}</td>
     <td class="l"><span class="key-level ${klC}">${kl}</span></td>
-    <td class="l"><span style="color:${sCol}; font-size:10px; letter-spacing:0.5px">${sect || "—"}</span></td>
+    <td class="l">${sect ? `<span style="color:${sCol};border:1px solid ${hexAlpha(sCol,70)};background:${hexAlpha(sCol,20)};padding:1px 6px;border-radius:3px;font-size:10px;letter-spacing:0.4px;white-space:nowrap">${sect}</span>` : '<span class="tx-d">—</span>'}</td>
     <td class="l"><span class="action-pill a-${cls.action.toLowerCase()}">${cls.action}</span></td>
   </tr>`;
 }
