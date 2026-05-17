@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ' *)",
+      "Bash(pip install *)",
+      "mcp__tradingview__tv_health_check",
+      "mcp__tradingview__tv_launch",
+      "PowerShell(netstat *)",
+      "PowerShell(Stop-Process *)",
+      "mcp__tradingview__chart_set_timeframe",
+      "mcp__tradingview__chart_set_symbol",
+      "mcp__tradingview__capture_screenshot",
+      "mcp__tradingview__chart_set_visible_range",
+      "Bash(python -c \"import sys; [print\\(l\\) for l in sys.stdin if 'cache hit' not in l]\")",
+      "Bash(python scout.py)",
+      "mcp__tradingview__ui_keyboard",
+      "Bash(python *)",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\linne\" -Recurse -Depth 3 -Filter \"*btc*\" -ErrorAction SilentlyContinue)",
+      "Bash(Select-Object FullName)",
+      "Bash(Get-Content \"C:\\\\Users\\\\linne\\\\OneDrive\\\\Dokument\\\\claude-ai-scout\\\\output\\\\scout_2026-05-14.csv\")",
+      "Bash(Select-Object -First 5)",
+      "mcp__tradingview__tab_list",
+      "mcp__tradingview__tab_switch",
+      "mcp__tradingview__chart_get_state",
+      "PowerShell(Start-Process python -ArgumentList \"-m\", \"http.server\", \"8080\", \"--directory\", \"C:\\\\Users\\\\linne\\\\OneDrive\\\\Dokument\\\\claude-ai-scout\\\\output\" -WindowStyle Hidden; Start-Sleep -Seconds 1; Start-Process \"http://localhost:8080/dashboard.html\")",
+      "mcp__tradingview__quote_get",
+      "mcp__tradingview__data_get_ohlcv",
+      "mcp__tradingview__data_get_study_values",
+      "Bash(python3 *)"
+    ]
+  }
+}
