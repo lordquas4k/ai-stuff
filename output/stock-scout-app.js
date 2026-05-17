@@ -173,14 +173,14 @@ const SETUP_SUB = {
   WEAK:     "not a long candidate",
 };
 
-let activeTab = "today";
+let activeTab = "setups";
 let activeFilter = "all";
 let activeTicker = null;
 let watchlist = new Set(JSON.parse(localStorage.getItem("scout-watchlist") || "[]"));
 
 function persistWatchlist() {
   localStorage.setItem("scout-watchlist", JSON.stringify([...watchlist]));
-  $("c-watch").textContent = "·" + watchlist.size;
+  if ($("c-watch")) $("c-watch").textContent = "·" + watchlist.size;
 }
 
 // ============== utils ==============
@@ -203,12 +203,13 @@ function stars(r2) {
   return `<span class="star-on">${"★".repeat(n)}</span><span class="star-off">${"★".repeat(5 - n)}</span>`;
 }
 
-// Combined dataset for "today" view = best-of from DATA based on action priority
 function activeDataset() {
-  if (activeTab === "signa") return SIGNA;
-  if (activeTab === "ai")    return AI_SECTOR;
-  if (activeTab === "watch") return DATA.filter(d => watchlist.has(d.ticker));
-  return DATA;
+  if (activeTab === "watch") return [...DATA, ...SIGNA, ...AI_SECTOR]
+    .filter(d => watchlist.has(d.ticker))
+    .filter((d, i, arr) => arr.findIndex(x => x.ticker === d.ticker) === i);
+  if (activeTab === "setups") return [...DATA, ...SIGNA, ...AI_SECTOR]
+    .filter((d, i, arr) => arr.findIndex(x => x.ticker === d.ticker) === i);
+  return DATA; // main
 }
 
 // ============== TABLE RENDER ==============
@@ -251,16 +252,19 @@ function rowHTML(d) {
     <td class="l"><span class="score-cell"><span class="score-num">${Math.round(d.score).toLocaleString()}</span><span class="bar-w"><span class="bar-f" style="width:${barW}%;background:${barC}"></span></span></span></td>
     <td class="c">${mtHTML}</td>
     <td class="l"><span class="key-level ${klC}">${kl}</span></td>
-    <td class="l"><span class="dim" style="font-size:10px; letter-spacing:0.5px">${sect || "—"}</span></td>
+    <td class="l"><span style="color:${sCol}; font-size:10px; letter-spacing:0.5px">${sect || "—"}</span></td>
     <td class="l"><span class="action-pill a-${cls.action.toLowerCase()}">${cls.action}</span></td>
   </tr>`;
 }
+
+const SETUPS_TAB_SETUPS = new Set(["PULLBACK", "BREAKOUT"]);
 
 function renderTable() {
   const data = activeDataset().slice();
   const grouped = {};
   for (const d of data) {
     const cls = classify(d);
+    if (activeTab === "setups" && activeFilter === "all" && !SETUPS_TAB_SETUPS.has(cls.setup)) continue;
     if (activeFilter === "MT_BULL") {
       const isBull = (d.mt_state || "BULL").endsWith("BULL");
       if (!isBull) continue;
@@ -272,9 +276,7 @@ function renderTable() {
   let h = "";
   let totalRows = 0;
 
-  // when ALL tab and no filter: show all groups in order, including BASING/WEAK
-  // when TODAY tab: show actionable groups first; hide BASING/WEAK
-  const showAll = activeTab === "all";
+  const showAll = activeTab === "main";
   for (const setup of SETUP_ORDER) {
     const rows = grouped[setup] || [];
     if (!rows.length) continue;
@@ -730,11 +732,12 @@ function buildNarrative() {
   $("kpi-mt-conflict").textContent = mtBearCount;
 
   // Header counts
-  $("c-today").textContent = "·" + ds.length;
-  $("c-all").textContent   = "·" + DATA.length;
-  $("c-signa").textContent = "·" + SIGNA.length;
-  $("c-ai").textContent    = "·" + AI_SECTOR.length;
-  $("c-watch").textContent = "·" + watchlist.size;
+  const allTickers = [...DATA, ...SIGNA, ...AI_SECTOR]
+    .filter((d, i, arr) => arr.findIndex(x => x.ticker === d.ticker) === i);
+  const setupsCount = allTickers.filter(d => SETUPS_TAB_SETUPS.has(classify(d).setup)).length;
+  $("c-setups").textContent = "·" + setupsCount;
+  $("c-main").textContent   = "·" + DATA.length;
+  $("c-watch").textContent  = "·" + watchlist.size;
 }
 
 // ============== TABS + FILTERS ==============
@@ -744,9 +747,8 @@ document.querySelectorAll(".hdr-tab").forEach(btn => {
     activeFilter = "all";
     document.querySelectorAll(".hdr-tab").forEach(b => b.classList.toggle("active", b === btn));
     document.querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c.dataset.filter === "all"));
-    // Hide read card on watchlist/all tab — feels redundant
-    $("read-card").style.display = (activeTab === "watch" || activeTab === "all") ? "none" : "";
-    document.getElementById("fresh-strip").style.display = (activeTab === "watch" || activeTab === "all") ? "none" : "grid";
+    $("read-card").style.display = (activeTab === "watch" || activeTab === "main") ? "none" : "";
+    document.getElementById("fresh-strip").style.display = (activeTab === "watch" || activeTab === "main") ? "none" : "grid";
     document.querySelector(".signals").style.display = (activeTab === "watch") ? "none" : "grid";
     resetDetail();
     buildNarrative();
