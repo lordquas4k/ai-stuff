@@ -97,7 +97,7 @@ const MT_DATA   = {json.dumps(mt_data)};
         f"({len(data)} main + {len(signa)} signa + {len(ai_sector)} AI sector rows)"
     )
 
-    html = OUTPUT_DIR / "Stock Scout v2.html"
+    html = OUTPUT_DIR / "index.html"
     if html.exists():
         if sys.platform == "win32":
             subprocess.Popen(["start", "", str(html.resolve())], shell=True)
