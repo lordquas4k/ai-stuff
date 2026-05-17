@@ -692,6 +692,9 @@ tbody td.c { text-align: center; }
 .score-num { color: var(--tx-1); font-weight: 600; min-width: 36px; text-align: right; }
 .bar-w { display: inline-block; width: 44px; height: 4px; background: var(--bd-1); border-radius: 2px; overflow: hidden; }
 .bar-f { height: 100%; border-radius: 2px; }
+.conf-cell { display: inline-flex; align-items: center; gap: 5px; }
+.conf-arc { width: 18px; height: 18px; border-radius: 50%; flex-shrink: 0; }
+.conf-num { font-size: 11px; font-weight: 700; font-family: var(--mono); min-width: 20px; }
 
 .trend-bars {
   display: inline-flex; gap: 2px; align-items: flex-end; height: 12px;
@@ -1049,6 +1052,7 @@ tbody td.c { text-align: center; }
               <th class="l">TICKER</th>
               <th class="l">SETUP</th>
               <th class="l">SCORE</th>
+              <th class="c">CONF</th>
               <th class="c">TREND</th>
               <th class="l">KEY LEVEL</th>
               <th class="l">SECTOR</th>
