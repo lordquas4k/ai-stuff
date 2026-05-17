@@ -530,7 +530,7 @@ function showDetail(ticker) {
     <div class="det-score-row">
       <div class="det-score-tile">
         <div class="det-score-num" style="color:${actionColor}">${Math.round(d.score).toLocaleString()}</div>
-        <div class="det-score-lbl">Momentum Score</div>
+        <div class="det-score-lbl">Trend Score</div>
       </div>
       <div class="det-score-tile">
         <div class="stars-row">${stars(d.r_squared)}</div>
