@@ -365,6 +365,21 @@ body {
 .read-regime-pill.r-on  { background: rgba(62,224,168,0.10); color: var(--c-mint); border: 1px solid rgba(62,224,168,0.3); }
 .read-regime-pill.r-mid { background: rgba(244,200,96,0.10); color: var(--c-amber);border: 1px solid rgba(244,200,96,0.3); }
 .read-regime-pill.r-off { background: rgba(255,92,124,0.10); color: var(--c-red);  border: 1px solid rgba(255,92,124,0.3); }
+.regime-wrap { position: relative; display: inline-flex; cursor: help; }
+.regime-tooltip {
+  display: none; position: absolute; top: calc(100% + 8px); left: 0;
+  background: #141b24; border: 1px solid rgba(255,255,255,0.12);
+  padding: 11px 14px; border-radius: 5px; min-width: 290px;
+  z-index: 999; font-family: var(--mono); line-height: 1.65;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.55); pointer-events: none;
+}
+.regime-wrap:hover .regime-tooltip { display: block; }
+.regime-tooltip .tt-title { font-size: 9px; letter-spacing: 1.4px; color: var(--tx-3); margin-bottom: 7px; text-transform: uppercase; }
+.regime-tooltip .tt-row { font-size: 11px; color: var(--tx-2); margin-bottom: 3px; }
+.regime-tooltip .tt-on  { color: var(--c-mint); }
+.regime-tooltip .tt-mid { color: var(--c-amber); }
+.regime-tooltip .tt-off { color: var(--c-red); }
+.regime-tooltip .tt-foot { font-size: 10px; color: var(--tx-3); margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.07); padding-top: 7px; }
 .read-prose {
   font-family: var(--mono);
   font-size: 14px;
@@ -913,7 +928,7 @@ tbody td.c { text-align: center; }
 
     <div class="hdr-right">
       <span class="hdr-pill"><span class="dot dot-g"></span>LIVE</span>
-      <span class="hdr-date">Sat, May 16, 2026</span>
+      <span class="hdr-date" id="hdr-date">—</span>
       <div class="hdr-spy">
         <span class="hdr-spy-val">SPY $592.40</span>
         <span class="hdr-spy-chg tx-g">+0.32%</span>
@@ -950,7 +965,16 @@ tbody td.c { text-align: center; }
       <div class="read-card" id="read-card">
         <div class="read-head">
           <span class="kicker" style="margin:0">TAPE READ</span>
-          <span class="read-regime-pill r-on" id="regime-pill">● RISK-ON</span>
+          <span class="regime-wrap">
+            <span class="read-regime-pill r-on" id="regime-pill">● RISK-ON</span>
+            <div class="regime-tooltip">
+              <div class="tt-title">Breadth Guide — how to read this</div>
+              <div class="tt-row"><span class="tt-on">■ RISK-ON  ≥ 15%</span> — Most leaders trending. Strong tape.</div>
+              <div class="tt-row"><span class="tt-mid">■ NEUTRAL   5–14%</span> — Mixed. Only select names working.</div>
+              <div class="tt-row"><span class="tt-off">■ RISK-OFF  &lt; 5%</span> — Almost nothing trending. Defensive.</div>
+              <div class="tt-foot">Breadth = % of S&amp;P 500 stocks passing all 8 Minervini trend-template filters</div>
+            </div>
+          </span>
         </div>
         <div class="read-prose" id="read-prose"></div>
         <div class="read-metrics" id="read-metrics"></div>

@@ -814,3 +814,11 @@ setInterval(tickTape, 3500);
 persistWatchlist();
 buildNarrative();
 renderTable();
+
+// Set header date from scan data
+(function() {
+  const el = document.getElementById("hdr-date");
+  if (!el || typeof SCAN_DATE === "undefined") return;
+  const d = new Date(SCAN_DATE + "T00:00:00");
+  el.textContent = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+})();
