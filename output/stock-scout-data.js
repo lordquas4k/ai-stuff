@@ -136,13 +136,13 @@ const AI_SECTOR = [
 ];
 
 // =========================================================================
-// WEEKLY XO MACRO TREND — 12 EMA vs 25 EMA on weekly bars
+// WEEKLY MACRO TREND — 12 EMA vs 25 EMA on weekly bars
 // state: BULL | FRESH_BULL | BEAR | FRESH_BEAR
 // spread = (ema_fast - ema_slow) / ema_slow * 100
 // Values curated to match each ticker's apparent weekly trend.
 // In Python: compute via closes.resample("W").last().ewm(span=N).mean()
 // =========================================================================
-const XO_DATA = {
+const MT_DATA = {
   // Strong long-term trends — BULL
   SNDK:  { state:"BULL",       spread: 24.5 },
   LITE:  { state:"BULL",       spread: 18.2 },
@@ -242,153 +242,4 @@ const XO_DATA = {
   BA:    { state:"BEAR",       spread: -2.4 },
 };
 
-// Merge XO into each data row + compute EMA fast/slow from close as approx
-function mergeXO(row) {
-  const xo = XO_DATA[row.ticker];
-  if (!xo) {
-    // sensible default: in-trend BULL if pricing above SMA50
-    row.xo_state = row.close > row.sma50 ? "BULL" : "BEAR";
-    row.xo_spread_pct = ((row.close - row.sma50) / row.sma50 * 100) * 0.3;
-  } else {
-    row.xo_state = xo.state;
-    row.xo_spread_pct = xo.spread;
-  }
-  // approximate ema values for display (real impl: weekly resample + .ewm)
-  row.xo_ema_slow = row.close / (1 + row.xo_spread_pct / 100 / 2);
-  row.xo_ema_fast = row.xo_ema_slow * (1 + row.xo_spread_pct / 100);
-  return row;
-}
-
-DATA.forEach(mergeXO);
-SIGNA.forEach(mergeXO);
-AI_SECTOR.forEach(mergeXO);
-
-// =========================================================================
-// CLASSIFIER — derived setup + action from raw fields
-// Thresholds:
-//   BUY ZONE   :  0–15% above SMA50 (Minervini's "ideal")
-//   CAUTION    : 15–25% above SMA50
-//   EXTENDED   :  >25% above SMA50
-// =========================================================================
-function classify(d) {
-  const distFromSMA50 = (d.close - d.sma50) / d.sma50 * 100;
-  const inBuyZone = distFromSMA50 <= 15;
-  const inCautionZone = distFromSMA50 > 15 && distFromSMA50 <= 25;
-  const extended = distFromSMA50 > 25;
-  const atBreakout = d.dist_10dh >= -1.0;  // within 1% of 10d high
-
-  let setup, action, thesis;
-
-  if (d.all_pass && d.pullback && inBuyZone) {
-    setup = "PULLBACK";
-    action = "INVESTIGATE";
-    thesis = "Pulling back inside an intact Stage-2 uptrend. Buy zone of the 50-day MA — Minervini's preferred R/R entry.";
-  } else if (d.all_pass && atBreakout && inBuyZone) {
-    setup = "BREAKOUT";
-    action = "INVESTIGATE";
-    thesis = "Clearing the 10-day high inside the buy zone. Fresh momentum entry — confirm with volume.";
-  } else if (d.all_pass && inBuyZone) {
-    setup = "TRENDING";
-    action = "WATCH";
-    thesis = "Healthy Stage-2 uptrend, still inside the 50-day buy zone. Primary entry missed — watch for next pullback.";
-  } else if (d.all_pass && inCautionZone) {
-    setup = "CAUTION";
-    action = "WAIT";
-    thesis = "All-pass but 15–25% above the 50-day MA. Stop placement is wider, R/R is compressing. Wait for pullback.";
-  } else if (d.all_pass && extended) {
-    setup = "EXTENDED";
-    action = "AVOID";
-    thesis = "More than 25% above the 50-day MA. Chase math is broken — wait for a meaningful pullback before considering.";
-  } else if (!d.all_pass && d.m1 && d.m2) {
-    setup = "BASING";
-    action = "BUILD";
-    thesis = "Partial pass — long-term trend holds but missing one or two confirmation filters. Worth tracking, not buying.";
-  } else {
-    setup = "WEAK";
-    action = "AVOID";
-    thesis = "Failed key trend filters. Not a long candidate in the Minervini framework.";
-  }
-
-  return { setup, action, thesis, distFromSMA50, inBuyZone, inCautionZone, extended };
-}
-
-// =========================================================================
-// TRADE PLAN — entry / stop / target / R-R suggestions
-// =========================================================================
-function tradePlan(d, cls) {
-  const px = d.close;
-  let entry, stop, target, invalidates, note;
-
-  switch (cls.setup) {
-    case "PULLBACK": {
-      const entryLo = Math.max(d.sma50, px * 0.985);
-      const entryHi = px * 1.01;
-      entry = `$${fmt(entryLo)} – $${fmt(entryHi)}`;
-      stop = Math.min(d.sma50 * 0.97, px * 0.92);
-      target = px * 1.20;
-      invalidates = `Close below SMA50 ($${fmt(d.sma50)}) on volume — abandons the buy-zone thesis.`;
-      note = "Best R/R entry per Minervini framework.";
-      break;
-    }
-    case "BREAKOUT": {
-      entry = `$${fmt(px * 0.998)} – $${fmt(px * 1.012)}`;
-      stop = px * 0.93;
-      target = px * 1.20;
-      invalidates = `Break back below the 10-day breakout line and close below SMA50 ($${fmt(d.sma50)}).`;
-      note = "Confirm with above-average volume on the break.";
-      break;
-    }
-    case "TRENDING": {
-      entry = `Wait for pullback to $${fmt(d.sma50 * 1.02)}`;
-      stop = d.sma50 * 0.95;
-      target = px * 1.15;
-      invalidates = `Close below SMA50 ($${fmt(d.sma50)}) on volume.`;
-      note = "Primary entry missed. Patience — let it come to the 50-day.";
-      break;
-    }
-    case "CAUTION": {
-      entry = `Wait for pullback to $${fmt(d.sma50 * 1.05)}`;
-      stop = d.sma50 * 0.95;
-      target = px * 1.10;
-      invalidates = `Stop is too wide here — entry math is unfavorable.`;
-      note = "Sit on hands. Buy on the next contraction.";
-      break;
-    }
-    case "EXTENDED": {
-      entry = `Stand aside — chase math broken`;
-      stop = px * 0.85;
-      target = null;
-      invalidates = `Stock is &gt;25% above its 50-day MA. The probability of a pullback is high; do not buy.`;
-      note = "Add to watchlist. Re-evaluate after a 10–20% retracement.";
-      break;
-    }
-    case "BASING": {
-      entry = `Wait for all-pass + volume`;
-      stop = d.sma50 * 0.95;
-      target = null;
-      invalidates = `Failure of M1/M2 (loss of long-term trend).`;
-      note = "Not ready. Re-screen when full Trend Template passes.";
-      break;
-    }
-    default: {
-      entry = `Not a candidate`;
-      stop = null;
-      target = null;
-      invalidates = `Failed core trend filters.`;
-      note = "Skip.";
-    }
-  }
-
-  const stopPct = stop ? ((stop - px) / px * 100) : null;
-  const targetPct = target ? ((target - px) / px * 100) : null;
-  const rr = (stop && target) ? Math.abs(targetPct / stopPct) : null;
-
-  return { entry, stop, stopPct, target, targetPct, rr, invalidates, note };
-}
-
-function fmt(n) {
-  if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
-  if (n >= 100) return n.toFixed(0);
-  if (n >= 10) return n.toFixed(2);
-  return n.toFixed(2);
-}
+// mergeMacroTrend / classify / tradePlan / fmt are defined in stock-scout-app.js

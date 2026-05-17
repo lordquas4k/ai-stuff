@@ -2,6 +2,146 @@
 // STOCK SCOUT v2 — app logic
 // =========================================================================
 
+// ============== MACRO TREND MERGE (runs after data.js defines DATA/SIGNA/AI_SECTOR) ==============
+function mergeMacroTrend(row) {
+  const mt = MT_DATA[row.ticker];
+  if (!mt) {
+    row.mt_state = row.close > row.sma50 ? "BULL" : "BEAR";
+    row.mt_spread_pct = ((row.close - row.sma50) / row.sma50 * 100) * 0.3;
+  } else {
+    row.mt_state = mt.state;
+    row.mt_spread_pct = mt.spread;
+  }
+  row.mt_ema_slow = row.close / (1 + row.mt_spread_pct / 100 / 2);
+  row.mt_ema_fast = row.mt_ema_slow * (1 + row.mt_spread_pct / 100);
+  return row;
+}
+
+DATA.forEach(mergeMacroTrend);
+SIGNA.forEach(mergeMacroTrend);
+AI_SECTOR.forEach(mergeMacroTrend);
+
+// ============== CLASSIFIER ==============
+function classify(d) {
+  const distFromSMA50 = (d.close - d.sma50) / d.sma50 * 100;
+  const inBuyZone = distFromSMA50 <= 15;
+  const inCautionZone = distFromSMA50 > 15 && distFromSMA50 <= 25;
+  const extended = distFromSMA50 > 25;
+  const atBreakout = d.dist_10dh >= -1.0;
+
+  let setup, action, thesis;
+
+  if (d.all_pass && d.pullback && inBuyZone) {
+    setup = "PULLBACK";
+    action = "INVESTIGATE";
+    thesis = "Pulling back inside an intact Stage-2 uptrend. Buy zone of the 50-day MA — Minervini's preferred R/R entry.";
+  } else if (d.all_pass && atBreakout && inBuyZone) {
+    setup = "BREAKOUT";
+    action = "INVESTIGATE";
+    thesis = "Clearing the 10-day high inside the buy zone. Fresh momentum entry — confirm with volume.";
+  } else if (d.all_pass && inBuyZone) {
+    setup = "TRENDING";
+    action = "WATCH";
+    thesis = "Healthy Stage-2 uptrend, still inside the 50-day buy zone. Primary entry missed — watch for next pullback.";
+  } else if (d.all_pass && inCautionZone) {
+    setup = "CAUTION";
+    action = "WAIT";
+    thesis = "All-pass but 15–25% above the 50-day MA. Stop placement is wider, R/R is compressing. Wait for pullback.";
+  } else if (d.all_pass && extended) {
+    setup = "EXTENDED";
+    action = "AVOID";
+    thesis = "More than 25% above the 50-day MA. Chase math is broken — wait for a meaningful pullback before considering.";
+  } else if (!d.all_pass && d.m1 && d.m2) {
+    setup = "BASING";
+    action = "BUILD";
+    thesis = "Partial pass — long-term trend holds but missing one or two confirmation filters. Worth tracking, not buying.";
+  } else {
+    setup = "WEAK";
+    action = "AVOID";
+    thesis = "Failed key trend filters. Not a long candidate in the Minervini framework.";
+  }
+
+  return { setup, action, thesis, distFromSMA50, inBuyZone, inCautionZone, extended };
+}
+
+// ============== TRADE PLAN ==============
+function fmt(n) {
+  if (n >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  if (n >= 100) return n.toFixed(0);
+  return n.toFixed(2);
+}
+
+function tradePlan(d, cls) {
+  const px = d.close;
+  let entry, stop, target, invalidates, note;
+
+  switch (cls.setup) {
+    case "PULLBACK": {
+      const entryLo = Math.max(d.sma50, px * 0.985);
+      const entryHi = px * 1.01;
+      entry = `$${fmt(entryLo)} – $${fmt(entryHi)}`;
+      stop = Math.min(d.sma50 * 0.97, px * 0.92);
+      target = px * 1.20;
+      invalidates = `Close below SMA50 ($${fmt(d.sma50)}) on volume — abandons the buy-zone thesis.`;
+      note = "Best R/R entry per Minervini framework.";
+      break;
+    }
+    case "BREAKOUT": {
+      entry = `$${fmt(px * 0.998)} – $${fmt(px * 1.012)}`;
+      stop = px * 0.93;
+      target = px * 1.20;
+      invalidates = `Break back below the 10-day breakout line and close below SMA50 ($${fmt(d.sma50)}).`;
+      note = "Confirm with above-average volume on the break.";
+      break;
+    }
+    case "TRENDING": {
+      entry = `Wait for pullback to $${fmt(d.sma50 * 1.02)}`;
+      stop = d.sma50 * 0.95;
+      target = px * 1.15;
+      invalidates = `Close below SMA50 ($${fmt(d.sma50)}) on volume.`;
+      note = "Primary entry missed. Patience — let it come to the 50-day.";
+      break;
+    }
+    case "CAUTION": {
+      entry = `Wait for pullback to $${fmt(d.sma50 * 1.05)}`;
+      stop = d.sma50 * 0.95;
+      target = px * 1.10;
+      invalidates = `Stop is too wide here — entry math is unfavorable.`;
+      note = "Sit on hands. Buy on the next contraction.";
+      break;
+    }
+    case "EXTENDED": {
+      entry = `Stand aside — chase math broken`;
+      stop = px * 0.85;
+      target = null;
+      invalidates = `Stock is &gt;25% above its 50-day MA. The probability of a pullback is high; do not buy.`;
+      note = "Add to watchlist. Re-evaluate after a 10–20% retracement.";
+      break;
+    }
+    case "BASING": {
+      entry = `Wait for all-pass + volume`;
+      stop = d.sma50 * 0.95;
+      target = null;
+      invalidates = `Failure of M1/M2 (loss of long-term trend).`;
+      note = "Not ready. Re-screen when full Trend Template passes.";
+      break;
+    }
+    default: {
+      entry = `Not a candidate`;
+      stop = null;
+      target = null;
+      invalidates = `Failed core trend filters.`;
+      note = "Skip.";
+    }
+  }
+
+  const stopPct = stop ? ((stop - px) / px * 100) : null;
+  const targetPct = target ? ((target - px) / px * 100) : null;
+  const rr = (stop && target) ? Math.abs(targetPct / stopPct) : null;
+
+  return { entry, stop, stopPct, target, targetPct, rr, invalidates, note };
+}
+
 const FILTER_LABELS = {
   m1: "Price > SMA150 & SMA200",
   m2: "SMA150 > SMA200",
@@ -78,12 +218,12 @@ function rowHTML(d) {
   const sCol = secColor(sect);
   const isStar = watchlist.has(d.ticker);
 
-  // XO macro-trend pill (weekly 12/25 EMA)
-  const xoState = d.xo_state || "BULL";
-  const xoCls = xoState.toLowerCase();
-  const xoIcon = xoState === "FRESH_BULL" ? "⚡" : xoState === "FRESH_BEAR" ? "⚡" : "●";
-  const xoLabel = xoState.replace("FRESH_", "");
-  const xoHTML = `<span class="xo-pill xo-${xoCls}"><span class="xo-icon">${xoIcon}</span>${xoLabel}</span>`;
+  // Macro Trend pill (weekly 12/25 EMA)
+  const mtState = d.mt_state || "BULL";
+  const mtCls = mtState.toLowerCase();
+  const mtIcon = mtState === "FRESH_BULL" ? "⚡" : mtState === "FRESH_BEAR" ? "⚡" : "●";
+  const mtLabel = mtState.replace("FRESH_", "");
+  const mtHTML = `<span class="mt-pill mt-${mtCls}"><span class="mt-icon">${mtIcon}</span>${mtLabel}</span>`;
 
   // key level — context-aware
   let kl, klC = "tx-w";
@@ -109,7 +249,7 @@ function rowHTML(d) {
     <td class="l"><span class="sec-dot" style="background:${sCol}"></span><span class="tk">${d.ticker}</span></td>
     <td class="l"><span class="setup-pill s-${cls.setup.toLowerCase()}">${cls.setup}</span></td>
     <td class="l"><span class="score-cell"><span class="score-num">${Math.round(d.score).toLocaleString()}</span><span class="bar-w"><span class="bar-f" style="width:${barW}%;background:${barC}"></span></span></span></td>
-    <td class="c">${xoHTML}</td>
+    <td class="c">${mtHTML}</td>
     <td class="l"><span class="key-level ${klC}">${kl}</span></td>
     <td class="l"><span class="dim" style="font-size:10px; letter-spacing:0.5px">${sect || "—"}</span></td>
     <td class="l"><span class="action-pill a-${cls.action.toLowerCase()}">${cls.action}</span></td>
@@ -121,8 +261,8 @@ function renderTable() {
   const grouped = {};
   for (const d of data) {
     const cls = classify(d);
-    if (activeFilter === "XO_BULL") {
-      const isBull = (d.xo_state || "BULL").endsWith("BULL");
+    if (activeFilter === "MT_BULL") {
+      const isBull = (d.mt_state || "BULL").endsWith("BULL");
       if (!isBull) continue;
     } else if (activeFilter !== "all" && cls.setup !== activeFilter) continue;
     if (!grouped[cls.setup]) grouped[cls.setup] = [];
@@ -183,7 +323,7 @@ function renderTable() {
 
 // ============== TRADINGVIEW CHART ==============
 let tvWidget = null;
-let tvTimeframe = "W";    // default weekly (XO Macro Trend style)
+let tvTimeframe = "W";    // default weekly (Macro Trend style)
 let tvSymbol = null;
 
 function renderChart(ticker) {
@@ -387,13 +527,13 @@ function showDetail(ticker) {
 
     <div class="det-divider"></div>
 
-    <div class="det-section-lbl">Weekly XO Macro Trend · 12 / 25 EMA</div>
+    <div class="det-section-lbl">Weekly Macro Trend · 12 / 25 EMA</div>
     ${(() => {
-      const xs = d.xo_state || "BULL";
+      const xs = d.mt_state || "BULL";
       const xc = xs.toLowerCase();
       const ic = xs.startsWith("FRESH") ? "⚡" : "●";
       const lb = xs.replace("FRESH_", "");
-      const sp = d.xo_spread_pct || 0;
+      const sp = d.mt_spread_pct || 0;
       const isBull = xs.endsWith("BULL");
       const aligns = (isBull && (cls.action === "INVESTIGATE" || cls.action === "WATCH")) ||
                      (!isBull && cls.action === "AVOID");
@@ -410,13 +550,13 @@ function showDetail(ticker) {
           : `<span class="dim">Information only — not actionable here.</span>`;
       return `
         <div class="row" style="gap:10px; margin-bottom:10px">
-          <span class="xo-pill xo-${xc}" style="font-size:11px; padding:4px 10px"><span class="xo-icon">${ic}</span>${lb}</span>
+          <span class="mt-pill mt-${xc}" style="font-size:11px; padding:4px 10px"><span class="mt-icon">${ic}</span>${lb}</span>
           <span class="${sp > 0 ? "tx-g" : "tx-r"}" style="font-size:12px; font-weight:600">${sp > 0 ? "+" : ""}${sp.toFixed(1)}%</span>
           <span class="dim" style="font-size:10px; letter-spacing:1px">SPREAD</span>
         </div>
         <div class="det-plan" style="grid-template-columns: auto 1fr; margin-bottom:10px">
-          <span class="det-plan-k">EMA 12W</span><span class="det-plan-v">${dol(d.xo_ema_fast || d.close)}</span>
-          <span class="det-plan-k">EMA 25W</span><span class="det-plan-v">${dol(d.xo_ema_slow || d.close)}</span>
+          <span class="det-plan-k">EMA 12W</span><span class="det-plan-v">${dol(d.mt_ema_fast || d.close)}</span>
+          <span class="det-plan-k">EMA 25W</span><span class="det-plan-v">${dol(d.mt_ema_slow || d.close)}</span>
         </div>
         <div style="font-size:11px; color:var(--tx-2); line-height:1.45; margin-bottom:8px">${readNote}</div>
         <div style="font-size:10px; letter-spacing:0.3px">${verdict}</div>
@@ -493,7 +633,7 @@ function buildNarrative() {
       sectorStat[s].pass++;
       sectorStat[s].score += Math.max(0, d.score);
     }
-    if ((d.xo_state || "").startsWith("FRESH_BULL")) sectorStat[s].fresh++;
+    if ((d.mt_state || "").startsWith("FRESH_BULL")) sectorStat[s].fresh++;
   }
   const sectorRank = Object.entries(sectorStat)
     .filter(([_, v]) => v.pass > 0)
@@ -506,9 +646,9 @@ function buildNarrative() {
     breadth >= 5  ? { tag: "NEUTRAL",  cls: "r-mid", word: "narrow", vibe: "mixed tape" } :
                     { tag: "RISK-OFF", cls: "r-off", word: "thin",   vibe: "defensive tape" };
 
-  // Fresh XO counts
-  const freshBull = ds.filter(d => (d.xo_state || "") === "FRESH_BULL");
-  const freshBear = ds.filter(d => (d.xo_state || "") === "FRESH_BEAR");
+  // Fresh Macro Trend counts
+  const freshBull = ds.filter(d => (d.mt_state || "") === "FRESH_BULL");
+  const freshBear = ds.filter(d => (d.mt_state || "") === "FRESH_BEAR");
 
   // Update regime pill
   const pill = $("regime-pill");
@@ -583,11 +723,11 @@ function buildNarrative() {
   $("kpi-breakouts").textContent = groups.BREAKOUT.length;
   $("kpi-extended").textContent = groups.EXTENDED.length;
 
-  // XO KPI
-  const xoBullCount = ds.filter(d => (d.xo_state || "BULL").endsWith("BULL")).length;
-  const xoBearCount = ds.filter(d => (d.xo_state || "BULL").endsWith("BEAR")).length;
-  $("kpi-xo-bull").textContent = xoBullCount;
-  $("kpi-xo-conflict").textContent = xoBearCount;
+  // Macro Trend KPI
+  const mtBullCount = ds.filter(d => (d.mt_state || "BULL").endsWith("BULL")).length;
+  const mtBearCount = ds.filter(d => (d.mt_state || "BULL").endsWith("BEAR")).length;
+  $("kpi-mt-bull").textContent = mtBullCount;
+  $("kpi-mt-conflict").textContent = mtBearCount;
 
   // Header counts
   $("c-today").textContent = "·" + ds.length;

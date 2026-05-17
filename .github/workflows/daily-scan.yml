@@ -1,0 +1,49 @@
+name: Daily Scan
+
+on:
+  schedule:
+    - cron: '0 14 * * 1-5'   # 15:00 CET / 16:00 CEST — ready by 16:30 Stockholm
+  workflow_dispatch:           # lets you trigger it manually from GitHub if needed
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Cache price data
+        uses: actions/cache@v4
+        with:
+          path: cache/
+          key: price-cache-${{ github.run_id }}
+          restore-keys: price-cache-
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scout
+        run: python scout.py
+
+      - name: Generate dashboard data
+        run: python generate_dashboard_v2.py
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add output/stock-scout-data.js output/scout_*.csv output/signa_*.csv output/ai_sector_*.csv
+          git diff --staged --quiet || git commit -m "scan: $(date -u +%Y-%m-%d)"
+          git push

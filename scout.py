@@ -6,18 +6,28 @@ from universe import TICKERS, BENCHMARK, ALL_TICKERS, SIGNA_TICKERS, AI_SECTOR_T
 from data import fetch_prices
 from ranking import rank_universe
 from filters import minervini_filters
+from signals import macro_trend
 
 OUTPUT_DIR = Path("output")
 TOP_N = 15
 
 
-def build_output(ranked: pd.DataFrame, filter_results: dict) -> pd.DataFrame:
+def build_output(ranked: pd.DataFrame, filter_results: dict, prices: dict) -> pd.DataFrame:
     rows = []
     for _, r in ranked.iterrows():
         ticker = r["ticker"]
         f = filter_results.get(ticker)
         if f is None:
             continue
+        prices_df = prices.get(ticker)
+        if prices_df is not None and len(prices_df) >= 2:
+            day_chg = round(
+                (prices_df["Close"].iloc[-1] / prices_df["Close"].iloc[-2] - 1) * 100, 2
+            )
+            mt = macro_trend(prices_df["Close"])
+        else:
+            day_chg = 0.0
+            mt = {"state": "BULL", "spread_pct": 0.0, "ema_fast": None, "ema_slow": None}
         rows.append({
             "ticker":             ticker,
             "rank":               int(r["rank"]),
@@ -35,6 +45,11 @@ def build_output(ranked: pd.DataFrame, filter_results: dict) -> pd.DataFrame:
             "ret_5d":             f["ret_5d"],
             "dist_from_10d_high": f["dist_from_10d_high"],
             "pullback":           f["pullback"],
+            "day_chg":            day_chg,
+            "mt_state":           mt["state"],
+            "mt_spread_pct":      mt["spread_pct"],
+            "mt_ema_fast":        mt["ema_fast"],
+            "mt_ema_slow":        mt["ema_slow"],
         })
 
     df = pd.DataFrame(rows)
@@ -109,7 +124,7 @@ def run_signa(spy_df: pd.DataFrame):
     print("Running Minervini filters on Signa tickers...")
     filter_results = minervini_filters(signa_prices, spy)
 
-    df = build_output(ranked, filter_results)
+    df = build_output(ranked, filter_results, signa_prices)
     out_path = OUTPUT_DIR / f"signa_{date.today()}.csv"
     df.to_csv(out_path, index=False)
     print(f"Saved: {out_path}  ({len(df)} rows)")
@@ -130,7 +145,7 @@ def run_ai_sector(spy_df: pd.DataFrame):
     print("Running Minervini filters on AI Sector tickers...")
     filter_results = minervini_filters(ai_prices, spy)
 
-    df = build_output(ranked, filter_results)
+    df = build_output(ranked, filter_results, ai_prices)
     out_path = OUTPUT_DIR / f"ai_sector_{date.today()}.csv"
     df.to_csv(out_path, index=False)
     print(f"Saved: {out_path}  ({len(df)} rows)")
@@ -151,7 +166,7 @@ def main():
     print("Running Minervini filters...")
     filter_results = minervini_filters(universe_prices, spy_df)
 
-    df = build_output(ranked, filter_results)
+    df = build_output(ranked, filter_results, universe_prices)
 
     out_path = OUTPUT_DIR / f"scout_{date.today()}.csv"
     df.to_csv(out_path, index=False)

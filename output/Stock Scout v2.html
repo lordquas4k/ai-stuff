@@ -648,8 +648,8 @@ tbody td.c { text-align: center; }
 .action-pill.a-build       { color: var(--c-slate); }
 .action-pill.a-avoid       { color: var(--c-red); }
 
-/* ============== XO MACRO TREND PILL ============== */
-.xo-pill {
+/* ============== MACRO TREND PILL ============== */
+.mt-pill {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 2px 7px;
   font-size: 10px; font-weight: 600;
@@ -658,15 +658,15 @@ tbody td.c { text-align: center; }
   font-family: var(--mono);
   white-space: nowrap;
 }
-.xo-pill .xo-icon {
+.mt-pill .mt-icon {
   font-size: 9px; line-height: 1;
 }
-.xo-pill.xo-bull        { background: rgba(62,224,168,0.08); color: var(--c-mint); border: 1px solid rgba(62,224,168,0.22); }
-.xo-pill.xo-fresh_bull  { background: rgba(62,224,168,0.14); color: var(--c-mint); border: 1px solid rgba(62,224,168,0.45); box-shadow: 0 0 8px rgba(62,224,168,0.15); }
-.xo-pill.xo-bear        { background: rgba(255,92,124,0.06); color: var(--c-red); border: 1px solid rgba(255,92,124,0.18); }
-.xo-pill.xo-fresh_bear  { background: rgba(255,92,124,0.12); color: var(--c-red); border: 1px solid rgba(255,92,124,0.4); box-shadow: 0 0 8px rgba(255,92,124,0.15); }
+.mt-pill.mt-bull        { background: rgba(62,224,168,0.08); color: var(--c-mint); border: 1px solid rgba(62,224,168,0.22); }
+.mt-pill.mt-fresh_bull  { background: rgba(62,224,168,0.14); color: var(--c-mint); border: 1px solid rgba(62,224,168,0.45); box-shadow: 0 0 8px rgba(62,224,168,0.15); }
+.mt-pill.mt-bear        { background: rgba(255,92,124,0.06); color: var(--c-red); border: 1px solid rgba(255,92,124,0.18); }
+.mt-pill.mt-fresh_bear  { background: rgba(255,92,124,0.12); color: var(--c-red); border: 1px solid rgba(255,92,124,0.4); box-shadow: 0 0 8px rgba(255,92,124,0.15); }
 
-.xo-spread {
+.mt-spread {
   font-size: 10px;
   color: var(--tx-3);
   margin-left: 4px;
@@ -936,8 +936,8 @@ tbody td.c { text-align: center; }
     <div class="kpi-item"><span class="kpi-lbl">PULLBACKS</span> <span class="kpi-val tx-p" id="kpi-pullbacks">6</span></div>
     <div class="kpi-item"><span class="kpi-lbl">BREAKOUTS</span> <span class="kpi-val tx-g" id="kpi-breakouts">5</span></div>
     <div class="kpi-item"><span class="kpi-lbl">EXTENDED</span> <span class="kpi-val tx-r" id="kpi-extended">6</span></div>
-    <div class="kpi-item"><span class="kpi-lbl">XO BULL</span> <span class="kpi-val tx-g" id="kpi-xo-bull">—</span></div>
-    <div class="kpi-item"><span class="kpi-lbl">XO CONFLICT</span> <span class="kpi-val tx-r" id="kpi-xo-conflict">—</span></div>
+    <div class="kpi-item"><span class="kpi-lbl">MT BULL</span> <span class="kpi-val tx-g" id="kpi-mt-bull">—</span></div>
+    <div class="kpi-item"><span class="kpi-lbl">MT CONFLICT</span> <span class="kpi-val tx-r" id="kpi-mt-conflict">—</span></div>
     <div class="kpi-item"><span class="kpi-lbl">REGIME</span> <span class="kpi-val tx-g"><span class="dot dot-g"></span>RISK-ON</span></div>
     <div class="kpi-item"><span class="kpi-lbl">UNIVERSE</span> <span class="kpi-val">S&amp;P 500</span></div>
   </div>
@@ -1016,7 +1016,7 @@ tbody td.c { text-align: center; }
           <button class="chip" data-filter="CAUTION">CAUTION</button>
           <button class="chip" data-filter="EXTENDED">EXTENDED</button>
           <span style="width:1px; height:18px; background:var(--bd-2); margin:0 4px"></span>
-          <button class="chip" data-filter="XO_BULL" title="Weekly XO bull confirmation only">✓ XO BULL</button>
+          <button class="chip" data-filter="MT_BULL" title="Weekly Macro Trend bull confirmation only">✓ MT BULL</button>
         </div>
 
         <table>
